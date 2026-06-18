@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Arcade — Four Free Games</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B0E1A;
+    --surface:#141A2E;
+    --surface-2:#1C2440;
+    --text:#E8ECF7;
+    --text-dim:#8A93B8;
+    --cyan:#00E5FF;
+    --magenta:#FF2E8A;
+    --yellow:#FFD23F;
+    --green:#39FF8A;
+    --font-display:'Press Start 2P', monospace;
+    --font-body:'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono:'Space Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;}
+  body{
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(0,229,255,0.06), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(255,46,138,0.06), transparent 40%);
+    padding:max(16px, env(safe-area-inset-top)) 16px 40px;
+  }
+  #app{max-width:480px;margin:0 auto;}
+  .marquee{text-align:center;margin:8px 0 28px;}
+  .marquee h1{
+    font-family:var(--font-display);
+    font-size:clamp(22px,7vw,32px);
+    letter-spacing:2px;
+    margin:0 0 8px;
+    color:var(--text);
+    text-shadow:0 0 6px rgba(0,229,255,0.6), 0 0 18px rgba(0,229,255,0.25);
+    animation:flicker 2.4s ease-out 1;
+  }
+  .marquee p{
+    font-family:var(--font-mono);
+    color:var(--text-dim);
+    font-size:13px;
+    letter-spacing:1px;
+    margin:0;
+  }
+  @keyframes flicker{
+    0%{opacity:0;}
+    8%{opacity:1;}
+    10%{opacity:0.3;}
+    14%{opacity:1;}
+    100%{opacity:1;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .marquee h1{animation:none;}
+  }
+
+  .screen{display:none;}
+  .screen.active{display:block;animation:fadeIn 0.25s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+  .cabinet-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .cabinet{
+    background:var(--surface);
+    border-radius:16px;
+    border:2px solid var(--surface-2);
+    padding:22px 12px;
+    display:flex;flex-direction:column;align-items:center;gap:10px;
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:14px;
+    color:var(--text);
+    cursor:pointer;
+    transition:transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    min-height:120px;
+  }
+  .cabinet:active{transform:scale(0.97);}
+  .cabinet .icon{font-size:32px;}
+  .cabinet-cyan{border-color:rgba(0,229,255,0.35);}
+  .cabinet-cyan:hover, .cabinet-cyan:focus-visible{box-shadow:0 0 0 2px var(--cyan), 0 0 22px rgba(0,229,255,0.35);}
+  .cabinet-magenta{border-color:rgba(255,46,138,0.35);}
+  .cabinet-magenta:hover, .cabinet-magenta:focus-visible{box-shadow:0 0 0 2px var(--magenta), 0 0 22px rgba(255,46,138,0.35);}
+  .cabinet-yellow{border-color:rgba(255,210,63,0.35);}
+  .cabinet-yellow:hover, .cabinet-yellow:focus-visible{box-shadow:0 0 0 2px var(--yellow), 0 0 22px rgba(255,210,63,0.35);}
+  .cabinet-green{border-color:rgba(57,255,138,0.35);}
+  .cabinet-green:hover, .cabinet-green:focus-visible{box-shadow:0 0 0 2px var(--green), 0 0 22px rgba(57,255,138,0.35);}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .back-btn{
+    background:var(--surface);border:1px solid var(--surface-2);color:var(--text);
+    font-family:var(--font-mono);font-size:13px;padding:10px 14px;border-radius:10px;
+    cursor:pointer;
+  }
+  .back-btn:active{transform:scale(0.96);}
+  .game-title{font-family:var(--font-display);font-size:14px;letter-spacing:1px;}
+  .stat{font-family:var(--font-mono);font-size:13px;color:var(--text-dim);}
+
+  .card-panel{background:var(--surface);border-radius:16px;padding:18px;border:1px solid var(--surface-2);}
+
+  /* Memory */
+  .memory-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px;}
+  .mem-card{
+    aspect-ratio:1/1;border-radius:10px;background:var(--surface-2);
+    display:flex;align-items:center;justify-content:center;font-size:26px;
+    cursor:pointer;border:1px solid transparent;transition:background 0.15s, transform 0.1s;
+  }
+  .mem-card:active{transform:scale(0.95);}
+  .mem-card.matched{background:rgba(57,255,138,0.12);border-color:var(--green);}
+  .win-banner{margin-top:14px;text-align:center;font-family:var(--font-mono);color:var(--green);}
+
+  /* Dodge */
+  #dodgeCanvas{width:100%;display:block;border-radius:14px;background:#0E1326;touch-action:none;}
+  .dodge-controls{display:flex;gap:10px;margin-top:12px;}
+  .dpad-btn{
+    flex:1;background:var(--surface-2);border:1px solid rgba(255,46,138,0.3);color:var(--text);
+    font-size:20px;padding:16px 0;border-radius:12px;cursor:pointer;user-select:none;
+  }
+  .dpad-btn:active{background:rgba(255,46,138,0.2);}
+  .dodge-overlay{
+    position:absolute;inset:0;background:rgba(11,14,26,0.92);border-radius:14px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+    text-align:center;padding:20px;
+  }
+  .canvas-wrap{position:relative;}
+  .btn-primary{
+    font-family:var(--font-mono);background:var(--magenta);color:#0B0E1A;border:none;
+    padding:12px 22px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;
+  }
+
+  /* Quiz */
+  .quiz-q{font-size:17px;font-weight:600;margin:4px 0 16px;line-height:1.4;}
+  .quiz-opt{
+    display:block;width:100%;text-align:left;background:var(--surface-2);border:1px solid transparent;
+    color:var(--text);padding:13px 14px;border-radius:10px;margin-bottom:9px;font-size:14px;
+    font-family:var(--font-body);cursor:pointer;
+  }
+  .quiz-opt.correct{border-color:var(--green);background:rgba(57,255,138,0.12);}
+  .quiz-opt.wrong{border-color:var(--magenta);background:rgba(255,46,138,0.12);}
+  .quiz-opt[disabled]{cursor:default;}
+  .progress-bar{height:6px;background:var(--surface-2);border-radius:6px;overflow:hidden;margin-bottom:18px;}
+  .progress-fill{height:100%;background:var(--yellow);transition:width 0.3s ease;}
+
+  /* Tic Tac Toe */
+  .ttt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;}
+  .ttt-cell{
+    aspect-ratio:1/1;background:var(--surface-2);border-radius:10px;
+    display:flex;align-items:center;justify-content:center;font-size:34px;font-family:var(--font-display);
+    cursor:pointer;color:var(--green);
+  }
+  .ttt-cell.o{color:var(--magenta);}
+  .ttt-status{margin-top:12px;text-align:center;font-family:var(--font-mono);color:var(--text-dim);}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="marquee">
+    <h1>ARCADE</h1>
+    <p>four games. zero cost. all yours.</p>
+  </div>
+
+  <main id="home" class="screen active">
+    <div class="cabinet-grid">
+      <button class="cabinet cabinet-cyan" data-game="memory"><span class="icon">🧠</span>Memory Match</button>
+      <button class="cabinet cabinet-magenta" data-game="dodge"><span class="icon">🏃</span>Dodge Run</button>
+      <button class="cabinet cabinet-yellow" data-game="quiz"><span class="icon">❓</span>Quiz Challenge</button>
+      <button class="cabinet cabinet-green" data-game="ttt"><span class="icon">⭕</span>Tic-Tac-Toe</button>
+    </div>
+  </main>
+
+  <section id="memory" class="screen">
+    <div class="topbar">
+      <button class="back-btn" data-back>← Menu</button>
+      <span class="game-title">MEMORY</span>
+      <span class="stat" id="memMoves">Moves: 0</span>
+    </div>
+    <div class="card-panel">
+      <div class="memory-grid" id="memoryGrid"></div>
+      <div class="win-banner" id="memWin" style="display:none;">Matched everything! Tap Menu and play again.</div>
+    </div>
+  </section>
+
+  <section id="dodge" class="screen">
+    <div class="topbar">
+      <button class="back-btn" data-back>← Menu</button>
+      <span class="game-title">DODGE</span>
+      <span class="stat" id="dodgeScore">0.0</span>
+    </div>
+    <div class="card-panel">
+      <div class="canvas-wrap">
+        <canvas id="dodgeCanvas" height="420"></canvas>
+        <div class="dodge-overlay" id="dodgeOverlay" style="display:none;">
+          <div class="game-title">GAME OVER</div>
+          <div class="stat" id="dodgeFinal"></div>
+          <button class="btn-primary" id="dodgeRestart">Play Again</button>
+        </div>
+      </div>
+      <div class="dodge-controls">
+        <button class="dpad-btn" id="leftBtn">◀</button>
+        <button class="dpad-btn" id="rightBtn">▶</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="quiz" class="screen">
+    <div class="topbar">
+      <button class="back-btn" data-back>← Menu</button>
+      <span class="game-title">QUIZ</span>
+      <span class="stat" id="quizScore">0/0</span>
+    </div>
+    <div class="card-panel">
+      <div class="progress-bar"><div class="progress-fill" id="quizProgress" style="width:0%;"></div></div>
+      <div id="quizBody"></div>
+    </div>
+  </section>
+
+  <section id="ttt" class="screen">
+    <div class="topbar">
+      <button class="back-btn" data-back>← Menu</button>
+      <span class="game-title">TIC-TAC-TOE</span>
+      <button class="back-btn" id="tttReset">Reset</button>
+    </div>
+    <div class="card-panel">
+      <div class="ttt-grid" id="tttGrid"></div>
+      <div class="ttt-status" id="tttStatus">Your move — you're X</div>
+    </div>
+  </section>
+</div>
+
+<script>
+// ---------- Navigation ----------
+const screens = document.querySelectorAll('.screen');
+function showScreen(id){
+  screens.forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(id !== 'dodge') stopDodge();
+}
+document.querySelectorAll('.cabinet').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const game = btn.dataset.game;
+    showScreen(game);
+    if(game==='memory') initMemory();
+    if(game==='dodge') initDodge();
+    if(game==='quiz') initQuiz();
+    if(game==='ttt') initTTT();
+  });
+});
+document.querySelectorAll('[data-back]').forEach(btn=>{
+  btn.addEventListener('click', ()=> showScreen('home'));
+});
+
+// ---------- Memory Match ----------
+let memState = {};
+function initMemory(){
+  const emojis = ['🎮','🎵','🍕','⚡','🌟','🔥'];
+  let deck = [...emojis, ...emojis].map((e,i)=>({id:i, emoji:e, flipped:false, matched:false}));
+  for(let i=deck.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [deck[i],deck[j]] = [deck[j],deck[i]];
+  }
+  memState = {deck, first:null, second:null, moves:0, lock:false};
+  document.getElementById('memWin').style.display='none';
+  renderMemory();
+}
+function renderMemory(){
+  const grid = document.getElementById('memoryGrid');
+  grid.innerHTML = '';
+  memState.deck.forEach(card=>{
+    const el = document.createElement('div');
+    el.className = 'mem-card' + (card.matched ? ' matched':'');
+    el.textContent = (card.flipped || card.matched) ? card.emoji : '?';
+    el.addEventListener('click', ()=> flipMemCard(card.id));
+    grid.appendChild(el);
+  });
+  document.getElementById('memMoves').textContent = 'Moves: ' + memState.moves;
+}
+function flipMemCard(id){
+  if(memState.lock) return;
+  const card = memState.deck.find(c=>c.id===id);
+  if(card.flipped || card.matched) return;
+  card.flipped = true;
+  if(!memState.first){
+    memState.first = card;
+  } else {
+    memState.second = card;
+    memState.lock = true;
+    memState.moves++;
+    renderMemory();
+    setTimeout(()=>{
+      if(memState.first.emoji === memState.second.emoji){
+        memState.first.matched = true;
+        memState.second.matched = true;
+      } else {
+        memState.first.flipped = false;
+        memState.second.flipped = false;
+      }
+      memState.first = null;
+      memState.second = null;
+      memState.lock = false;
+      renderMemory();
+      if(memState.deck.every(c=>c.matched)){
+        document.getElementById('memWin').style.display='block';
+      }
+    }, 600);
+    return;
+  }
+  renderMemory();
+}
+
+// ---------- Dodge Run ----------
+let dodge = {running:false, rafId:null};
+function initDodge(){
+  stopDodge();
+  const canvas = document.getElementById('dodgeCanvas');
+  canvas.width = canvas.clientWidth;
+  const ctx = canvas.getContext('2d');
+  document.getElementById('dodgeOverlay').style.display = 'none';
+
+  const player = {x: canvas.width/2 - 18, y: canvas.height - 40, w:36, h:24, speed:6};
+  let obstacles = [];
+  let lastSpawn = 0;
+  let spawnInterval = 1100;
+  let elapsed = 0;
+  let lastTime = null;
+  let moveDir = 0; // -1 left, 1 right, 0 still
+  let pointerActive = false;
+
+  function reset(){
+    obstacles = [];
+    elapsed = 0;
+    spawnInterval = 1100;
+    player.x = canvas.width/2 - player.w/2;
+    lastTime = null;
+    dodge.running = true;
+    document.getElementById('dodgeScore').textContent = '0.0';
+  }
+  reset();
+
+  document.getElementById('dodgeRestart').onclick = ()=>{
+    document.getElementById('dodgeOverlay').style.display='none';
+    reset();
+    dodge.rafId = requestAnimationFrame(loop);
+  };
+
+  const leftBtn = document.getElementById('leftBtn');
+  const rightBtn = document.getElementById('rightBtn');
+  const setDir = (d)=> moveDir = d;
+  leftBtn.onpointerdown = ()=> setDir(-1);
+  rightBtn.onpointerdown = ()=> setDir(1);
+  [leftBtn,rightBtn].forEach(b=>{
+    b.onpointerup = ()=> moveDir = 0;
+    b.onpointerleave = ()=> moveDir = 0;
+  });
+  canvas.onpointerdown = (e)=>{
+    pointerActive = true;
+    movePlayerToPointer(e);
+  };
+  canvas.onpointermove = (e)=>{ if(pointerActive) movePlayerToPointer(e); };
+  canvas.onpointerup = ()=> pointerActive = false;
+  function movePlayerToPointer(e){
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width/rect.width);
+    player.x = Math.max(0, Math.min(canvas.width - player.w, x - player.w/2));
+  }
+  function keyHandler(e){
+    if(e.key === 'ArrowLeft') moveDir = -1;
+    if(e.key === 'ArrowRight') moveDir = 1;
+  }
+  function keyUp(e){
+    if(e.key === 'ArrowLeft' || e.key === 'ArrowRight') moveDir = 0;
+  }
+  document.addEventListener('keydown', keyHandler);
+  document.addEventListener('keyup', keyUp);
+  dodge.cleanupKeys = ()=>{
+    document.removeEventListener('keydown', keyHandler);
+    document.removeEventListener('keyup', keyUp);
+  };
+
+  function spawnObstacle(){
+    const w = 28 + Math.random()*30;
+    obstacles.push({
+      x: Math.random() * (canvas.width - w),
+      y: -20,
+      w, h: 20,
+      speed: 140 + elapsed * 8
+    });
+  }
+
+  function loop(ts){
+    if(!dodge.running) return;
+    if(lastTime === null) lastTime = ts;
+    const dt = (ts - lastTime) / 1000;
+    lastTime = ts;
+    elapsed += dt;
+    document.getElementById('dodgeScore').textContent = elapsed.toFixed(1);
+
+    player.x += moveDir * player.speed;
+    player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
+
+    lastSpawn += dt*1000;
+    if(lastSpawn > spawnInterval){
+      spawnObstacle();
+      lastSpawn = 0;
+      spawnInterval = Math.max(420, 1100 - elapsed*30);
+    }
+
+    obstacles.forEach(o => o.y += o.speed * dt);
+    obstacles = obstacles.filter(o => o.y < canvas.height + 30);
+
+    for(const o of obstacles){
+      if(player.x < o.x + o.w && player.x + player.w > o.x &&
+         player.y < o.y + o.h && player.y + player.h > o.y){
+        gameOver();
+        return;
+      }
+    }
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = '#0E1326';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = '#FF2E8A';
+    obstacles.forEach(o => ctx.fillRect(o.x,o.y,o.w,o.h));
+    ctx.fillStyle = '#00E5FF';
+    ctx.fillRect(player.x, player.y, player.w, player.h);
+
+    dodge.rafId = requestAnimationFrame(loop);
+  }
+
+  function gameOver(){
+    dodge.running = false;
+    document.getElementById('dodgeFinal').textContent = 'Survived ' + elapsed.toFixed(1) + 's';
+    document.getElementById('dodgeOverlay').style.display = 'flex';
+  }
+
+  dodge.rafId = requestAnimationFrame(loop);
+}
+function stopDodge(){
+  dodge.running = false;
+  if(dodge.rafId) cancelAnimationFrame(dodge.rafId);
+  if(dodge.cleanupKeys) dodge.cleanupKeys();
+}
+
+// ---------- Quiz ----------
+const quizQuestions = [
+  {q:'Which planet is known as the Red Planet?', opts:['Venus','Mars','Jupiter','Mercury'], a:1},
+  {q:'How many strings does a standard guitar have?', opts:['4','5','6','8'], a:2},
+  {q:"What's the largest ocean on Earth?", opts:['Atlantic','Indian','Pacific','Arctic'], a:2},
+  {q:'In which year did the first iPhone release?', opts:['2005','2007','2009','2010'], a:1},
+  {q:'What gas do plants absorb from the air to grow?', opts:['Oxygen','Carbon Dioxide','Nitrogen','Helium'], a:1},
+  {q:'How many bones are in the adult human body?', opts:['196','206','216','226'], a:1}
+];
+let quizState = {};
+function initQuiz(){
+  quizState = {i:0, score:0};
+  renderQuiz();
+}
+function renderQuiz(){
+  document.getElementById('quizScore').textContent = quizState.score + '/' + quizQuestions.length;
+  document.getElementById('quizProgress').style.width = (quizState.i/quizQuestions.length*100) + '%';
+  const body = document.getElementById('quizBody');
+
+  if(quizState.i >= quizQuestions.length){
+    body.innerHTML = `
+      <div class="quiz-q">Done! Score: ${quizState.score} / ${quizQuestions.length}</div>
+      <button class="btn-primary" id="quizRestart">Play Again</button>
+    `;
+    document.getElementById('quizRestart').onclick = initQuiz;
+    document.getElementById('quizProgress').style.width = '100%';
+    return;
+  }
+
+  const q = quizQuestions[quizState.i];
+  body.innerHTML = `<div class="quiz-q">${q.q}</div>` +
+    q.opts.map((opt,idx)=>`<button class="quiz-opt" data-idx="${idx}">${opt}</button>`).join('');
+
+  body.querySelectorAll('.quiz-opt').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = parseInt(btn.dataset.idx);
+      const all = body.querySelectorAll('.quiz-opt');
+      all.forEach(b=>b.disabled = true);
+      if(idx === q.a){
+        btn.classList.add('correct');
+        quizState.score++;
+      } else {
+        btn.classList.add('wrong');
+        all[q.a].classList.add('correct');
+      }
+      setTimeout(()=>{
+        quizState.i++;
+        renderQuiz();
+      }, 700);
+    });
+  });
+}
+
+// ---------- Tic Tac Toe ----------
+let tttBoard = Array(9).fill(null);
+let tttOver = false;
+function initTTT(){
+  tttBoard = Array(9).fill(null);
+  tttOver = false;
+  document.getElementById('tttStatus').textContent = "Your move — you're X";
+  renderTTT();
+}
+document.getElementById('tttReset').addEventListener('click', initTTT);
+function renderTTT(){
+  const grid = document.getElementById('tttGrid');
+  grid.innerHTML = '';
+  tttBoard.forEach((val, idx)=>{
+    const cell = document.createElement('div');
+    cell.className = 'ttt-cell' + (val==='O' ? ' o' : '');
+    cell.textContent = val || '';
+    cell.addEventListener('click', ()=> tttMove(idx));
+    grid.appendChild(cell);
+  });
+}
+function tttWinner(board){
+  const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  for(const [a,b,c] of lines){
+    if(board[a] && board[a]===board[b] && board[b]===board[c]) return board[a];
+  }
+  if(board.every(c=>c)) return 'draw';
+  return null;
+}
+function tttMove(idx){
+  if(tttOver || tttBoard[idx]) return;
+  tttBoard[idx] = 'X';
+  renderTTT();
+  let result = tttWinner(tttBoard);
+  if(result){ endTTT(result); return; }
+
+  // simple AI: win if possible, else block, else center, else random
+  const aiMove = (() => {
+    const empties = tttBoard.map((v,i)=>v?null:i).filter(i=>i!==null);
+    for(const i of empties){
+      const test = [...tttBoard]; test[i]='O';
+      if(tttWinner(test)==='O') return i;
+    }
+    for(const i of empties){
+      const test = [...tttBoard]; test[i]='X';
+      if(tttWinner(test)==='X') return i;
+    }
+    if(tttBoard[4] === null) return 4;
+    const corners = [0,2,6,8].filter(i=>tttBoard[i]===null);
+    if(corners.length) return corners[Math.floor(Math.random()*corners.length)];
+    return empties[Math.floor(Math.random()*empties.length)];
+  })();
+
+  if(aiMove !== undefined){
+    tttBoard[aiMove] = 'O';
+    renderTTT();
+    result = tttWinner(tttBoard);
+    if(result){ endTTT(result); return; }
+  }
+  document.getElementById('tttStatus').textContent = "Your move — you're X";
+}
+function endTTT(result){
+  tttOver = true;
+  if(result === 'draw') document.getElementById('tttStatus').textContent = "Draw — tap Reset to play again";
+  else if(result === 'X') document.getElementById('tttStatus').textContent = "You win! 🎉 Tap Reset to play again";
+  else document.getElementById('tttStatus').textContent = "AI wins — tap Reset to try again";
+}
+</script>
+</body>
+</html>
